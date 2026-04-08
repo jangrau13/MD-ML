@@ -47,3 +47,11 @@ path = "src/bin/matmul_party_1.rs"
 [[bin]]
 name = "matmul_bench"
 path = "src/bin/matmul_bench.rs"
+
+[[bin]]
+name = "cross_lang_fake_offline"
+path = "src/bin/cross_lang_fake_offline.rs"
+
+[[bin]]
+name = "cross_lang_party_1"
+path = "src/bin/cross_lang_party_1.rs"
