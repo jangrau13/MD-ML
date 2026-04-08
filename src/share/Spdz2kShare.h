@@ -55,7 +55,7 @@ std::vector<typename Spdz2kShare<K, S>::SemiShrType> Spdz2kShare<K, S>::
 RemoveUpperBits(const std::vector<SemiShrType>& values) {
     std::vector<SemiShrType> ret(values.size());
 
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
+#if !defined(__cpp_lib_execution)
     std::transform(values.begin(), values.end(), ret.begin(),
                    [](SemiShrType value) { return RemoveUpperBits(value); });
 #else
@@ -71,7 +71,7 @@ RemoveUpperBits(const std::vector<SemiShrType>& values) {
 template <std::size_t K, std::size_t S>
 void Spdz2kShare<K, S>::
 RemoveUpperBitsInplace(std::vector<SemiShrType>& values) {
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
+#if !defined(__cpp_lib_execution)
     std::transform(values.begin(), values.end(), values.begin(),
                    [](SemiShrType value) { return RemoveUpperBits(value); });
 #else

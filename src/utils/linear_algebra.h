@@ -38,10 +38,10 @@ inline
 std::vector<T> matrixAdd(const std::vector<T>& x, const std::vector<T>& y) {
     std::vector<T> output(x.size());
 
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL   // or !__cpp_lib_execution?
-    std::transform(x.begin(), x.end(), y.begin(), output.begin(), std::plus<T>());
-#else
+#if defined(__cpp_lib_execution)
     std::transform(std::execution::par_unseq, x.begin(), x.end(), y.begin(), output.begin(), std::plus<T>());
+#else
+    std::transform(x.begin(), x.end(), y.begin(), output.begin(), std::plus<T>());
 #endif
 
     return output;
@@ -51,10 +51,10 @@ std::vector<T> matrixAdd(const std::vector<T>& x, const std::vector<T>& y) {
 template <std::integral T>
 inline
 void matrixAddAssign(std::vector<T>& x, const std::vector<T>& y) {
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-    std::transform(x.begin(), x.end(), y.begin(), x.begin(), std::plus<T>());
-#else
+#if defined(__cpp_lib_execution)
     std::transform(std::execution::par_unseq, x.begin(), x.end(), y.begin(), x.begin(), std::plus<T>());
+#else
+    std::transform(x.begin(), x.end(), y.begin(), x.begin(), std::plus<T>());
 #endif
 }
 
@@ -63,11 +63,11 @@ template <std::integral T1, std::integral T2>
 inline
 std::vector<T1> matrixAddConstant(const std::vector<T1>& x, T2 constant) {
     std::vector<T1> output(x.size());
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-    std::transform(x.begin(), x.end(), output.begin(),
+#if defined(__cpp_lib_execution)
+    std::transform(std::execution::par_unseq, x.begin(), x.end(), output.begin(),
                    [constant](T1 val) { return val + constant; });
 #else
-    std::transform(std::execution::par_unseq, x.begin(), x.end(), output.begin(),
+    std::transform(x.begin(), x.end(), output.begin(),
                    [constant](T1 val) { return val + constant; });
 #endif
     return output;
@@ -79,10 +79,10 @@ inline
 std::vector<T> matrixSubtract(const std::vector<T>& x, const std::vector<T>& y) {
     std::vector<T> output(x.size());
 
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-    std::transform(x.begin(), x.end(), y.begin(), output.begin(), std::minus<T>());
-#else
+#if defined(__cpp_lib_execution)
     std::transform(std::execution::par_unseq, x.begin(), x.end(), y.begin(), output.begin(), std::minus<T>());
+#else
+    std::transform(x.begin(), x.end(), y.begin(), output.begin(), std::minus<T>());
 #endif
 
     return output;
@@ -92,10 +92,10 @@ std::vector<T> matrixSubtract(const std::vector<T>& x, const std::vector<T>& y) 
 template <std::integral T>
 inline
 void matrixSubtractAssign(std::vector<T>& x, const std::vector<T>& y) {
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-    std::transform(x.begin(), x.end(), y.begin(), x.begin(), std::minus<T>());
-#else
+#if defined(__cpp_lib_execution)
     std::transform(std::execution::par_unseq, x.begin(), x.end(), y.begin(), x.begin(), std::minus<T>());
+#else
+    std::transform(x.begin(), x.end(), y.begin(), x.begin(), std::minus<T>());
 #endif
 }
 
@@ -105,11 +105,11 @@ template <std::integral T>
 inline
 std::vector<T> matrixScalar(const std::vector<T>& x, T scalar) {
     std::vector<T> output(x.size());
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-    std::transform(x.begin(), x.end(), output.begin(), [scalar](T val) { return scalar * val; });
-#else
+#if defined(__cpp_lib_execution)
     std::transform(std::execution::par_unseq, x.begin(), x.end(), output.begin(),
                    [scalar](T val) { return scalar * val; });
+#else
+    std::transform(x.begin(), x.end(), output.begin(), [scalar](T val) { return scalar * val; });
 #endif
     return output;
 }
@@ -117,10 +117,10 @@ std::vector<T> matrixScalar(const std::vector<T>& x, T scalar) {
 template <std::integral T>
 inline
 void matrixScalarAssign(std::vector<T>& x, T scalar) {
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-    std::transform(x.begin(), x.end(), x.begin(), [scalar](T val) { return scalar * val; });
-#else
+#if defined(__cpp_lib_execution)
     std::transform(std::execution::par_unseq, x.begin(), x.end(), x.begin(), [scalar](T val) { return scalar * val; });
+#else
+    std::transform(x.begin(), x.end(), x.begin(), [scalar](T val) { return scalar * val; });
 #endif
 }
 
@@ -130,11 +130,11 @@ inline
 std::vector<T> matrixElemMultiply(std::vector<T>& x, std::vector<T>& y) {
     std::vector<T> output(x.size());
 
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-    std::transform(x.begin(), x.end(), y.begin(), output.begin(), std::multiplies<T>());
-#else
+#if defined(__cpp_lib_execution)
     std::transform(std::execution::par_unseq,
                    x.begin(), x.end(), y.begin(), output.begin(), std::multiplies<T>());
+#else
+    std::transform(x.begin(), x.end(), y.begin(), output.begin(), std::multiplies<T>());
 #endif
 
     return output;

@@ -120,7 +120,7 @@ void Party::ConnectHandler(const boost::system::error_code& ec, std::size_t to_i
         send_sockets_[to_id].close();
     }
 
-    timers_[to_id].expires_from_now(boost::asio::chrono::seconds(kRetryAfterSeconds));
+    timers_[to_id].expires_after(boost::asio::chrono::seconds(kRetryAfterSeconds));
     timers_[to_id].async_wait([to_id, this](const boost::system::error_code&) {
         this->TryConnect(to_id);
     });

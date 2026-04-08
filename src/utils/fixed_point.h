@@ -51,7 +51,7 @@ template <typename Tp>
 [[nodiscard]]
 std::vector<Tp> truncateClearVec(const std::vector<Tp>& x) {
     std::vector<Tp> ret(x.size());
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
+#if !defined(__cpp_lib_execution)
     std::transform(x.begin(), x.end(), ret.begin(), truncateClear<Tp>);
 #else
     std::transform(std::execution::par_unseq, x.begin(), x.end(), ret.begin(), truncateClear<Tp>);
@@ -61,7 +61,7 @@ std::vector<Tp> truncateClearVec(const std::vector<Tp>& x) {
 
 template <typename Tp>
 void truncateClearVecInplace(std::vector<Tp>& x) {
-#ifdef _LIBCPP_HAS_NO_INCOMPLETE_PSTL
+#if !defined(__cpp_lib_execution)
     std::transform(x.begin(), x.end(), x.begin(), truncateClear<Tp>);
 #else
     std::transform(std::execution::par_unseq, x.begin(), x.end(), x.begin(), truncateClear<Tp>);

@@ -153,5 +153,7 @@ Temporary Items
 # iCloud generated files
 *.icloud
 
+md-ml-rs/target
+
 # End of https://www.toptal.com/developers/gitignore/api/clion,macos
 

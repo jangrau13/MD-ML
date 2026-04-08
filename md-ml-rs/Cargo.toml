@@ -1,0 +1,49 @@
+[package]
+name = "md-ml"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8"
+nalgebra = "0.33"
+rayon = "1.10"
+
+[[bin]]
+name = "test_fake_offline"
+path = "src/bin/test_fake_offline.rs"
+
+[[bin]]
+name = "test_party_0"
+path = "src/bin/test_party_0.rs"
+
+[[bin]]
+name = "test_party_1"
+path = "src/bin/test_party_1.rs"
+
+[[bin]]
+name = "dot_product_fake_offline"
+path = "src/bin/dot_product_fake_offline.rs"
+
+[[bin]]
+name = "dot_product_party_0"
+path = "src/bin/dot_product_party_0.rs"
+
+[[bin]]
+name = "dot_product_party_1"
+path = "src/bin/dot_product_party_1.rs"
+
+[[bin]]
+name = "matmul_fake_offline"
+path = "src/bin/matmul_fake_offline.rs"
+
+[[bin]]
+name = "matmul_party_0"
+path = "src/bin/matmul_party_0.rs"
+
+[[bin]]
+name = "matmul_party_1"
+path = "src/bin/matmul_party_1.rs"
+
+[[bin]]
+name = "matmul_bench"
+path = "src/bin/matmul_bench.rs"
