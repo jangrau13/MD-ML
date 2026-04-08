@@ -1,0 +1,13 @@
+[project]
+name = "md-ml-py"
+version = "0.1.0"
+description = "Python implementation of MD-ML secure matrix multiplication protocol"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.scripts]
+matmul-fake-offline = "matmul_fake_offline:main"
+matmul-party-0 = "matmul_party_0:main"
+matmul-party-1 = "matmul_party_1:main"
