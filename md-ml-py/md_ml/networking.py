@@ -1,5 +1,8 @@
 """
 TCP networking for two-party communication, matching the Rust Party struct.
+
+Supports both localhost (original) and hostname-based connections (Docker).
+Pass a ``hosts`` list to use Docker-style DNS names instead of 127.0.0.1.
 """
 
 from __future__ import annotations
@@ -7,19 +10,37 @@ from __future__ import annotations
 import socket
 import threading
 import time
+from typing import Callable
 
 
 RETRY_AFTER_SECONDS = 2
 CHUNK_SIZE = 1 << 20  # 1 MB
 
 
+# Optional event-hook callback type: (event_name, details_dict) -> None
+EventCallback = Callable[[str, dict], None] | None
+
+
 class Party:
     """Two-party TCP networking layer."""
 
-    def __init__(self, my_id: int, num_parties: int, port_base: int):
+    def __init__(
+        self,
+        my_id: int,
+        num_parties: int,
+        port_base: int,
+        hosts: list[str] | None = None,
+        on_event: EventCallback = None,
+    ):
         self.my_id = my_id
         self.num_parties = num_parties
         self._bytes_sent = 0
+        self._on_event = on_event
+
+        # Default: all parties on localhost (original behaviour)
+        if hosts is None:
+            hosts = ["127.0.0.1"] * num_parties
+        self._hosts = hosts
 
         self._send_streams: list[socket.socket | None] = [None] * num_parties
         self._recv_streams: list[socket.socket | None] = [None] * num_parties
@@ -27,14 +48,17 @@ class Party:
         results: dict[str, dict[int, socket.socket]] = {"send": {}, "recv": {}}
         threads = []
 
-        # Accept connections from other parties
+        self._emit("connecting", {"my_id": my_id, "num_parties": num_parties})
+
+        # Accept connections from other parties — listen on 0.0.0.0 so
+        # remote containers can reach us.
         for from_id in range(num_parties):
             if from_id == my_id:
                 continue
             port = self._which_port(port_base, from_id, my_id, num_parties)
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            listener.bind(("127.0.0.1", port))
+            listener.bind(("0.0.0.0", port))
             listener.listen(1)
 
             def accept_fn(lst=listener, fid=from_id):
@@ -47,23 +71,24 @@ class Party:
             t.start()
             threads.append(t)
 
-        # Connect to other parties
+        # Connect to other parties (use hostname from hosts list)
         for to_id in range(num_parties):
             if to_id == my_id:
                 continue
             port = self._which_port(port_base, my_id, to_id, num_parties)
+            target_host = hosts[to_id]
 
-            def connect_fn(p=port, tid=to_id):
+            def connect_fn(host=target_host, p=port, tid=to_id):
                 while True:
                     try:
                         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        s.connect(("127.0.0.1", p))
+                        s.connect((host, p))
                         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                         results["send"][tid] = s
                         return
-                    except ConnectionRefusedError:
+                    except (ConnectionRefusedError, OSError):
                         print(
-                            f"Failed to connect to party {tid}, "
+                            f"Failed to connect to party {tid} at {host}:{p}, "
                             f"retry after {RETRY_AFTER_SECONDS} seconds..."
                         )
                         time.sleep(RETRY_AFTER_SECONDS)
@@ -79,6 +104,12 @@ class Party:
             self._send_streams[pid] = s
         for pid, s in results["recv"].items():
             self._recv_streams[pid] = s
+
+        self._emit("connected", {"my_id": my_id})
+
+    def _emit(self, event: str, details: dict):
+        if self._on_event:
+            self._on_event(event, details)
 
     @staticmethod
     def _which_port(port_base: int, from_id: int, to_id: int, num_parties: int) -> int:

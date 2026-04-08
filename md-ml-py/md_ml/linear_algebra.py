@@ -142,10 +142,14 @@ def _matmul_u128_via_f64(a_list: list[int], b_list: list[int],
 # Matrix multiply (public API)
 # ---------------------------------------------------------------------------
 
-def matrix_multiply(lhs, rhs, dim_row: int, dim_mid: int, dim_col: int):
+def matrix_multiply(lhs, rhs, dim_row: int, dim_mid: int, dim_col: int,
+                    *, mask: int | None = None):
     """
     Compute C = A @ B where A is (dim_row x dim_mid) and B is (dim_mid x dim_col).
     All stored as flat row-major arrays. Uses float64 BLAS for acceleration.
+
+    For Python int lists, `mask` controls the wrapping modulus (2^bits - 1).
+    If None, defaults to 2^128 - 1 for backwards compat.
     """
     if isinstance(lhs, np.ndarray):
         a = lhs.reshape(dim_row, dim_mid)
@@ -153,12 +157,25 @@ def matrix_multiply(lhs, rhs, dim_row: int, dim_mid: int, dim_col: int):
         if lhs.dtype == np.uint64:
             return _matmul_u64_via_f64(a, b).ravel()
         elif lhs.dtype == np.uint32:
-            # u32: products fit in u64, use same trick with 2 x 16-bit chunks
             return _matmul_u32_via_f64(a, b).ravel()
         else:
             return (a @ b).ravel()
     else:
-        return _matmul_u128_via_f64(lhs, rhs, dim_row, dim_mid, dim_col)
+        m = mask if mask is not None else ((1 << 128) - 1)
+        return _matmul_pyint(lhs, rhs, dim_row, dim_mid, dim_col, m)
+
+
+def _matmul_pyint(a: list[int], b: list[int],
+                  m: int, k: int, n: int, mask: int) -> list[int]:
+    """Pure-Python integer matmul mod mask+1. For small rings or 128-bit."""
+    out = [0] * (m * n)
+    for i in range(m):
+        for j in range(n):
+            s = 0
+            for p in range(k):
+                s += a[i * k + p] * b[p * n + j]
+            out[i * n + j] = s & mask
+    return out
 
 
 def _matmul_u32_via_f64(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -179,37 +196,42 @@ def _matmul_u32_via_f64(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 # Element-wise operations
 # ---------------------------------------------------------------------------
 
-def matrix_add(x, y):
+def matrix_add(x, y, *, mask: int | None = None):
     if isinstance(x, np.ndarray):
         return x + y
-    return [((a + b) & ((1 << 128) - 1)) for a, b in zip(x, y)]
+    m = mask if mask is not None else ((1 << 128) - 1)
+    return [((a + b) & m) for a, b in zip(x, y)]
 
 
-def matrix_subtract(x, y):
+def matrix_subtract(x, y, *, mask: int | None = None):
     if isinstance(x, np.ndarray):
         return x - y
-    return [((a - b) & ((1 << 128) - 1)) for a, b in zip(x, y)]
+    m = mask if mask is not None else ((1 << 128) - 1)
+    return [((a - b) & m) for a, b in zip(x, y)]
 
 
-def matrix_add_assign(x, y):
+def matrix_add_assign(x, y, *, mask: int | None = None):
     if isinstance(x, np.ndarray):
         x += y
         return x
+    m = mask if mask is not None else ((1 << 128) - 1)
     for i in range(len(x)):
-        x[i] = (x[i] + y[i]) & ((1 << 128) - 1)
+        x[i] = (x[i] + y[i]) & m
     return x
 
 
-def matrix_subtract_assign(x, y):
+def matrix_subtract_assign(x, y, *, mask: int | None = None):
     if isinstance(x, np.ndarray):
         x -= y
         return x
+    m = mask if mask is not None else ((1 << 128) - 1)
     for i in range(len(x)):
-        x[i] = (x[i] - y[i]) & ((1 << 128) - 1)
+        x[i] = (x[i] - y[i]) & m
     return x
 
 
-def matrix_scalar(x, scalar):
+def matrix_scalar(x, scalar, *, mask: int | None = None):
     if isinstance(x, np.ndarray):
         return x * np.array(scalar, dtype=x.dtype)
-    return [((v * scalar) & ((1 << 128) - 1)) for v in x]
+    m = mask if mask is not None else ((1 << 128) - 1)
+    return [((v * scalar) & m) for v in x]

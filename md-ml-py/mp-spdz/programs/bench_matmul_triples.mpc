@@ -1,0 +1,66 @@
+"""
+Benchmark: SPDZ-2k preprocessing for matrix multiplication Beaver triples.
+
+For an n×n matrix multiply C = A × B, the MD-ML protocol needs:
+  - n² random elements for a (input mask for A)
+  - n² random elements for b (input mask for B)
+  - n² elements for c = matmul(a, b) — the matrix Beaver triple
+  - n² elements for λ_A, λ_B (input masks)
+  - n² elements for λ_z, λ_{z'} (truncation masks)
+  - edaBits for truncation
+
+This program generates the preprocessing material that the MD-ML protocol
+consumes, benchmarking the real cryptographic cost of triple generation
+under SPDZ-2k (OT-based, malicious security).
+
+Usage: compile with -R 64 for Z_{2^64}, then run with spdz2k-party.x
+"""
+
+import sys
+
+# Matrix dimension — configurable via program arguments
+# Default 2×2 for quick testing; set via compile-time args
+program.use_triples(program.args[1])
+
+n = program.args[1]  # matrix dimension
+size = n * n
+
+print_ln("MD-ML preprocessing benchmark: %s×%s matmul (k=%s)", n, n, program.bit_length)
+
+# ── 1. Input masks (λ_A, λ_B) ──
+# In MD-ML, each input wire needs a random mask shared among parties.
+# F_Prep.Input generates [λ] such that the input owner can open Δ = x + λ.
+lambda_a = [sint.get_random_input_mask_for(0) for _ in range(size)]
+lambda_b = [sint.get_random_input_mask_for(0) for _ in range(size)]
+print_ln("  Input masks: 2 × %s = %s triples consumed", size, 2 * size)
+
+# ── 2. Beaver matrix triple (a, b, c = a·b) ──
+# For the multiply-then-truncate protocol, we need a full matrix triple.
+# Each element of c[i,j] = Σ_k a[i,k] * b[k,j] requires n scalar triples.
+# Total: n³ scalar multiplications → n³ Beaver triples.
+a = Matrix(n, n, sint)
+b = Matrix(n, n, sint)
+c = Matrix(n, n, sint)
+
+# Fill a, b with random shared values (this consumes random bits/triples)
+for i in range(n):
+    for j in range(n):
+        a[i][j] = sint.get_random_triple()[0]  # random a
+        b[i][j] = sint.get_random_triple()[0]  # random b
+
+# Compute c = a × b securely (this consumes n³ Beaver triples)
+c = a * b
+print_ln("  Matrix triple: %s×%s × %s×%s = %s scalar multiplications", n, n, n, n, n*n*n)
+
+# ── 3. Truncation material (edaBits) ──
+# π_MultTrunc needs λ_z (k-d bit) and u (d-bit) with bit decompositions.
+# edaBits provide a shared value r with bit shares [r_i].
+# We need n² edaBits for λ_z and n² for u.
+d = 20  # fractional bits (typical for ML)
+for _ in range(size):
+    sint.get_edabit(program.bit_length - d, True)  # λ_z: (k-d)-bit edaBit
+for _ in range(size):
+    sint.get_edabit(d, True)  # u: d-bit edaBit
+print_ln("  edaBits: 2 × %s for truncation masks", size)
+
+print_ln("Preprocessing complete for %s×%s matmul.", n, n)

@@ -1,0 +1,223 @@
+services:
+  # ── MP-SPDZ: Real SPDZ-2k preprocessing (OT-based, no trusted dealer) ──
+  # Both parties jointly generate Beaver triples, input masks, and edaBits.
+
+  party0-mpspdz:
+    build:
+      context: ./mp-spdz
+      dockerfile: Dockerfile
+    container_name: mdml-party0-mpspdz
+    environment:
+      - PARTY_ID=0
+      - N_PARTIES=2
+      - PROTOCOL=spdz2k
+      - PROGRAM=bench_simple
+      - K_BITS=64
+      - S_BITS=64
+      - PORT_BASE=14000
+      - API_PORT=5000
+      - PARTY0_HOST=party0-mpspdz
+      - PARTY1_HOST=party1-mpspdz
+    ports:
+      - "5000:5000"
+    volumes:
+      - player-data-0:/mp-spdz/Player-Data
+      - persistence-0:/mp-spdz/Persistence
+    networks:
+      - mdml
+
+  party1-mpspdz:
+    build:
+      context: ./mp-spdz
+      dockerfile: Dockerfile
+    container_name: mdml-party1-mpspdz
+    environment:
+      - PARTY_ID=1
+      - N_PARTIES=2
+      - PROTOCOL=spdz2k
+      - PROGRAM=bench_simple
+      - K_BITS=64
+      - S_BITS=64
+      - PORT_BASE=14000
+      - API_PORT=5000
+      - PARTY0_HOST=party0-mpspdz
+      - PARTY1_HOST=party1-mpspdz
+    ports:
+      - "5001:5000"
+    volumes:
+      - player-data-1:/mp-spdz/Player-Data
+      - persistence-1:/mp-spdz/Persistence
+    networks:
+      - mdml
+
+  # ── Online phase parties (read MP-SPDZ preprocessing, run protocol) ──
+
+  party0:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: mdml-party0
+    command: python /app/docker/run_party.py
+    environment:
+      - PARTY_ID=0
+      - PORT_BASE=7070
+      - PARTY0_HOST=party0
+      - PARTY1_HOST=party1
+      - DASH_PORT=8080
+      - DB_DIR=/data
+      - PLAYER_DATA_DIR=/player-data
+      - PERSISTENCE_DIR=/persistence
+      - MPSPDZ_URL=http://party0-mpspdz:5000
+    ports:
+      - "8081:8080"
+    volumes:
+      - player-data-0:/player-data
+      - persistence-0:/persistence
+    depends_on:
+      - party0-mpspdz
+    networks:
+      - mdml
+
+  party1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: mdml-party1
+    command: python /app/docker/run_party.py
+    environment:
+      - PARTY_ID=1
+      - PORT_BASE=7070
+      - PARTY0_HOST=party0
+      - PARTY1_HOST=party1
+      - DASH_PORT=8080
+      - DB_DIR=/data
+      - PLAYER_DATA_DIR=/player-data
+      - PERSISTENCE_DIR=/persistence
+      - MPSPDZ_URL=http://party1-mpspdz:5000
+    ports:
+      - "8082:8080"
+    volumes:
+      - player-data-1:/player-data
+      - persistence-1:/persistence
+    depends_on:
+      - party1-mpspdz
+    networks:
+      - mdml
+
+  # ── Data parties (input owners — each owns a subset of columns) ──
+
+  dp0:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: mdml-dp0
+    command: python /app/docker/run_data_party.py
+    environment:
+      - DATA_PARTY_ID=0
+      - N_DATA_PARTIES=4
+      - DASH_PORT=8080
+      - DB_DIR=/data
+      - COMP_PARTY_URLS=http://party0:8080,http://party1:8080
+    ports:
+      - "8090:8080"
+    depends_on:
+      - party0
+      - party1
+    networks:
+      - mdml
+
+  dp1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: mdml-dp1
+    command: python /app/docker/run_data_party.py
+    environment:
+      - DATA_PARTY_ID=1
+      - N_DATA_PARTIES=4
+      - DASH_PORT=8080
+      - DB_DIR=/data
+      - COMP_PARTY_URLS=http://party0:8080,http://party1:8080
+    ports:
+      - "8091:8080"
+    depends_on:
+      - party0
+      - party1
+    networks:
+      - mdml
+
+  dp2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: mdml-dp2
+    command: python /app/docker/run_data_party.py
+    environment:
+      - DATA_PARTY_ID=2
+      - N_DATA_PARTIES=4
+      - DASH_PORT=8080
+      - DB_DIR=/data
+      - COMP_PARTY_URLS=http://party0:8080,http://party1:8080
+    ports:
+      - "8092:8080"
+    depends_on:
+      - party0
+      - party1
+    networks:
+      - mdml
+
+  dp3:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: mdml-dp3
+    command: python /app/docker/run_data_party.py
+    environment:
+      - DATA_PARTY_ID=3
+      - N_DATA_PARTIES=4
+      - DASH_PORT=8080
+      - DB_DIR=/data
+      - COMP_PARTY_URLS=http://party0:8080,http://party1:8080
+    ports:
+      - "8093:8080"
+    depends_on:
+      - party0
+      - party1
+    networks:
+      - mdml
+
+  # ── Dashboard (coordinator) ──
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_PARTY0_URL=http://localhost:8081
+        - NEXT_PUBLIC_PARTY1_URL=http://localhost:8082
+        - NEXT_PUBLIC_DP0_URL=http://localhost:8090
+        - NEXT_PUBLIC_DP1_URL=http://localhost:8091
+        - NEXT_PUBLIC_DP2_URL=http://localhost:8092
+        - NEXT_PUBLIC_DP3_URL=http://localhost:8093
+    container_name: mdml-dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      - party0
+      - party1
+      - dp0
+      - dp1
+      - dp2
+      - dp3
+    networks:
+      - mdml
+
+volumes:
+  player-data-0:
+  player-data-1:
+  persistence-0:
+  persistence-1:
+
+networks:
+  mdml:
+    driver: bridge

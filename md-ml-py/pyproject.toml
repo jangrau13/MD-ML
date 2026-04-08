@@ -7,7 +7,3 @@ dependencies = [
     "numpy>=1.24",
 ]
 
-[project.scripts]
-matmul-fake-offline = "matmul_fake_offline:main"
-matmul-party-0 = "matmul_party_0:main"
-matmul-party-1 = "matmul_party_1:main"

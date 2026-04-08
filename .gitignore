@@ -155,6 +155,7 @@ Temporary Items
 
 md-ml-rs/target
 md-ml-py/md_ml/__pycache__/*
+md-ml-py/md_ml/.venv
 
 # End of https://www.toptal.com/developers/gitignore/api/clion,macos
 

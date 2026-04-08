@@ -1,0 +1,63 @@
+"""
+Preprocessing for MD-ML: generate a matrix Beaver triple and input masks
+for SPDZ-2k matrix multiplication.
+
+For n×n matmul C = A × B, the protocol needs:
+  - A matrix Beaver triple: random [a] (n×n), [b] (n×n), [c] = matmul([a], [b]) (n×n)
+  - 2×n² input masks [λ] for player 0 (for matrices A and B)
+
+Layout in the persistence file (sequential shares, each = value + MAC):
+  Position 0          .. n²-1:        [a] shares (n² elements)
+  Position n²         .. 2n²-1:       [b] shares (n² elements)
+  Position 2n²        .. 3n²-1:       [c] shares (n² elements, c = matmul(a, b))
+  Position 3n²        .. 5n²-1:       input mask shares (2×n² for λ_A and λ_B)
+
+Usage:
+  ./compile.py -R <k> bench_simple <n>
+  ./spdz2k-party-<k>.x -p 0 -N 2 bench_simple-<n>
+"""
+
+n = int(program.args[1]) if len(program.args) > 1 else 4
+size = n * n
+
+print_ln("MD-ML preprocessing: k=%s, n=%s (%s elements)", program.bit_length, n, size)
+
+# ── 1. Matrix Beaver triple: [a], [b], [c] where c = matmul(a, b) ──
+print_ln("Generating matrix Beaver triple (%sx%s)...", n, n)
+
+a = Matrix(n, n, sint)
+b = Matrix(n, n, sint)
+
+# Fill a, b with random shared values using triples
+for i in range(n):
+    for j in range(n):
+        a[i][j] = sint.get_random_triple()[0]
+        b[i][j] = sint.get_random_triple()[0]
+
+# c = matmul(a, b) — computed securely
+c = a * b
+
+# Write a, b, c to persistence file
+a_flat = []
+b_flat = []
+c_flat = []
+for i in range(n):
+    for j in range(n):
+        a_flat.append(a[i][j])
+        b_flat.append(b[i][j])
+        c_flat.append(c[i][j])
+
+sint.write_to_file(a_flat, 0)
+sint.write_to_file(b_flat, size)
+sint.write_to_file(c_flat, 2 * size)
+print_ln("  Written [a], [b], [c] = matmul([a],[b]) (%s shares each)", size)
+
+# ── 2. Input masks for λ_A and λ_B ──
+print_ln("Generating %s input masks for player 0...", 2 * size)
+masks = []
+for i in range(2 * size):
+    share, _clear = sint.get_random_input_mask_for(0)
+    masks.append(share)
+sint.write_to_file(masks, 3 * size)
+
+print_ln("Done. Total: %s shares written.", 5 * size)
