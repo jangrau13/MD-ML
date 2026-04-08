@@ -154,6 +154,7 @@ Temporary Items
 *.icloud
 
 md-ml-rs/target
+md-ml-py/md_ml/__pycache__/*
 
 # End of https://www.toptal.com/developers/gitignore/api/clion,macos
 
